@@ -1,6 +1,6 @@
 # Next Step — Google Sign-In Starter
 
-A plain JavaScript application tracker with Firebase Google sign-in and a Python identity API. The interface includes searchable fictional applications, summary counters, an account panel, and token verification. Three functions in `src/auth.js` are left as TODOs: sign-in, auth-state observation, and sign-out.
+A plain JavaScript application tracker with Firebase Google sign-in and a Python identity API. The interface includes searchable fictional applications, summary counters, an account panel, and token verification. The starter leaves three connections in `src/auth.js` as TODOs: sign-in, auth-state observation, and sign-out. The completed version implements all three.
 
 The layout, visual styling, and fictional application examples are adapted from [build-your-first-webapp-starter-fall26](https://github.com/GDG-at-KU/build-your-first-webapp-starter-fall26). The charcoal welcome panel, green line art, pastel counters, and outlined controls continue that project's interface.
 
@@ -46,15 +46,39 @@ Firebase web configuration identifies the client project and is included in brow
 
 ## 3. Connect authentication
 
-Complete the three functions in `src/auth.js`. The imports are already provided.
+Open `src/auth.js`. The provider, both button handlers, the auth-state observer, and UI helpers are in this file. `firebase.js` initializes the Firebase client; `main.js` sends API requests.
 
-| Function | Task |
-| --- | --- |
-| `signIn()` | Return `signInWithPopup(auth, provider)`. |
-| `observeAuth(onChange)` | Return `onAuthStateChanged(auth, onChange)`. |
-| `signOut()` | Return `firebaseSignOut(auth)`. |
+**TODO 1 — Sign in:** inside `signInButton.onclick`, replace the TODO and its placeholder `throw` with:
 
-Replace the placeholder function bodies rather than appending to them. After completing sign-in, the popup can work while the account panel still shows signed out; the observer connects the authenticated user to the UI.
+```js
+await signInWithPopup(auth, provider);
+```
+
+The surrounding `try/catch` displays a readable error, and `finally` restores the controls. Keep those parts in place.
+
+**TODO 2 — Observe state:** replace the placeholder inside the `if (configured)` block, after `renderLoading()`, with:
+
+```js
+const unsubscribe = onAuthStateChanged(auth, (user) => {
+  clearTransientUserState();
+  if (user) {
+    renderAccount(user.displayName || 'Welcome!', user);
+  } else {
+    renderSignedOut();
+  }
+});
+if (import.meta.hot) import.meta.hot.dispose(unsubscribe);
+```
+
+The cleanup line prevents duplicate observers during Vite hot reload. After TODO 1, the popup can work while the account panel still shows signed out; TODO 2 connects the authenticated user to the UI.
+
+**TODO 3 — Sign out:** inside `signOutButton.onclick`, replace the TODO and its placeholder `throw` with:
+
+```js
+await signOut(auth);
+```
+
+The observer receives `null` after sign-out, clears the account details and previous API response, and shows the signed-out view. The handlers also prevent duplicate clicks while an operation is pending.
 
 Save and refresh after each change. Sign in, refresh to observe the restored session, then sign out. Cancellation should show a readable message and allow another attempt. These interactions work without the Python API.
 
@@ -136,8 +160,8 @@ The API does not query whether an account has been disabled or its sessions revo
 
 ```text
 src/firebase.js        Firebase configuration and initialization
-src/auth.js            Sign-in, observer, and sign-out functions
-src/main.js            Account UI and authenticated API requests
+src/auth.js            Provider, button handlers, observer, and account UI
+src/main.js            Authenticated API requests and response display
 src/tracker.js         Application list, summary, and filter rendering
 src/config.js          App name, labels, and accent color
 src/sample-data.js     Fictional application records

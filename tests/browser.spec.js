@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 test('the unmodified app loads without console errors', async ({ page }) => {
   const errors = [];
@@ -11,29 +12,46 @@ test('the unmodified app loads without console errors', async ({ page }) => {
   await page.screenshot({ path: 'test-results/app-preview.png', fullPage: true });
 });
 
-// Only the test browser gets these fake SDK boundaries. The shipped app has no
-// fake-login mode. Server tests separately exercise actual RSA verification.
-async function fakeAuth(page) {
+// Exercise the actual auth handlers and observer, replacing only Firebase's SDK.
+// The app has no fake-login mode. API tests cover actual RSA verification.
+async function fakeAuth(page, checkpoint = '03-complete', configured = true) {
+  const source = await readFile(new URL(`../checkpoints/${checkpoint}.js`, import.meta.url), 'utf8');
   await page.route(/\/src\/firebase\.js(?:\?.*)?$/, (route) => route.fulfill({
-    contentType: 'text/javascript', body: 'export const configured = true;',
+    contentType: 'text/javascript', body: `export const configured = ${configured}; export const auth = {};`,
   }));
   await page.route(/\/src\/auth\.js(?:\?.*)?$/, (route) => route.fulfill({
+    contentType: 'text/javascript', body: source.replace("'firebase/auth'", "'/tests/firebase-sdk-mock.js'"),
+  }));
+  await page.route('**/tests/firebase-sdk-mock.js', (route) => route.fulfill({
     contentType: 'text/javascript', body: `
       let notify;
-      export function observeAuth(callback) { notify = callback; callback(null); return () => {}; }
-      export async function signIn() {
-        if (window.cancelNext) { window.cancelNext = false; throw {code: 'auth/popup-closed-by-user'}; }
-        notify({uid: 'test-user-123', displayName: '<img src=x onerror=alert(1)>', email: 'user@example.test', getIdToken: async () => 'test-only-token'});
+      const user = () => ({uid: 'test-user-123', displayName: window.missingName ? null : '<img src=x onerror=alert(1)>', email: 'user@example.test', getIdToken: async () => 'test-only-token'});
+      export class GoogleAuthProvider { setCustomParameters() {} }
+      export function onAuthStateChanged(auth, callback) {
+        notify = callback;
+        queueMicrotask(() => callback(sessionStorage.getItem('testSignedIn') ? user() : null));
+        return () => { notify = undefined; };
       }
-      export async function signOut() { notify(null); }
+      export async function signInWithPopup(auth, provider) {
+        if (!auth || !(provider instanceof GoogleAuthProvider)) throw new Error('Missing Firebase arguments');
+        window.popupCalls = (window.popupCalls || 0) + 1;
+        if (window.cancelNext) { window.cancelNext = false; throw {code: 'auth/popup-closed-by-user'}; }
+        if (window.holdPopup) await new Promise(resolve => { window.releasePopup = resolve; });
+        sessionStorage.setItem('testSignedIn', 'yes');
+        notify?.(user());
+      }
+      export async function signOut(auth) {
+        if (!auth) throw new Error('Missing Firebase auth');
+        if (window.failSignOut) throw {code: 'auth/network-request-failed'};
+        sessionStorage.removeItem('testSignedIn');
+        notify?.(null);
+      }
     `,
   }));
 }
 
 test('missing configuration is explained; real Python rejects missing token', async ({ page }) => {
-  await page.route(/\/src\/firebase\.js(?:\?.*)?$/, (route) => route.fulfill({ contentType: 'text/javascript', body: 'export const configured = false;' }));
-  // Avoid depending on the Firebase SDK in an explicitly unconfigured session.
-  await page.route(/\/src\/auth\.js(?:\?.*)?$/, (route) => route.fulfill({ contentType: 'text/javascript', body: 'export const signIn = () => {}; export const signOut = () => {}; export const observeAuth = () => {};' }));
+  await fakeAuth(page, '03-complete', false);
   await page.goto('/');
   await expect(page.locator('#setup')).toBeVisible();
   await expect(page.locator('#sign-in')).toBeDisabled();
@@ -88,6 +106,52 @@ test('tracker summaries, filtering, notes, and empty state work without sign-in'
   await expect(page.locator('#applications > li')).toHaveCount(1);
   await expect(page.locator('#applications')).toContainText('Riverbend Systems');
   await expect(page.locator('#summary dd')).toHaveText(['3', '1', '2']);
+});
+
+test('observer restores identity on refresh; missing names and failed sign-out remain usable', async ({ page }) => {
+  await fakeAuth(page);
+  await page.goto('/');
+  await page.evaluate(() => { window.missingName = true; });
+  await page.locator('#sign-in').click();
+  await expect(page.locator('#name')).toHaveText('Welcome!');
+  await page.reload();
+  await expect(page.locator('#uid')).toHaveText('test-user-123');
+  await page.evaluate(() => { window.failSignOut = true; });
+  await page.locator('#sign-out').click();
+  await expect(page.locator('#auth-message')).toContainText('internet connection');
+  await expect(page.locator('#uid')).toHaveText('test-user-123');
+  await expect(page.locator('#sign-out')).toBeEnabled();
+});
+
+test('pending popup prevents duplicate sign-in calls', async ({ page }) => {
+  await fakeAuth(page);
+  await page.goto('/');
+  await page.evaluate(() => { window.holdPopup = true; });
+  await page.locator('#sign-in').click();
+  await expect(page.locator('#sign-in')).toBeDisabled();
+  await page.evaluate(() => document.getElementById('sign-in').onclick());
+  expect(await page.evaluate(() => window.popupCalls)).toBe(1);
+  await page.evaluate(() => window.releasePopup());
+  await expect(page.locator('#uid')).toHaveText('test-user-123');
+});
+
+test('starter and intermediate checkpoints keep their intended TODO boundaries', async ({ page }) => {
+  await fakeAuth(page, '03-start');
+  await page.goto('/');
+  await page.locator('#sign-in').click();
+  await expect(page.locator('#auth-message')).toContainText('TODO 1');
+  await expect(page.locator('#sign-in')).toBeEnabled();
+  await fakeAuth(page, '03-signin');
+  await page.reload();
+  await page.locator('#sign-in').click();
+  await expect(page.locator('#auth-message')).toContainText('sign-in finished');
+  await expect(page.locator('#account')).toBeHidden();
+  await fakeAuth(page, '03-state');
+  await page.reload();
+  await expect(page.locator('#uid')).toHaveText('test-user-123');
+  await page.locator('#sign-out').click();
+  await expect(page.locator('#auth-message')).toContainText('TODO 3');
+  await expect(page.locator('#sign-out')).toBeEnabled();
 });
 
 test('a late API response cannot restore a signed-out identity', async ({ page }) => {
