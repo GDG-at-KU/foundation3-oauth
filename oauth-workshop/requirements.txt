@@ -1,0 +1,15 @@
+# Pinned dependencies for local development and token verification.
+google-auth[requests]==2.58.1
+cryptography==49.0.0
+CacheControl==0.14.4
+python-dotenv==1.2.3
+requests==2.34.2
+certifi==2026.7.22
+cffi==2.1.1
+charset-normalizer==3.5.1
+idna==3.20
+msgpack==1.2.2
+pyasn1==0.6.4
+pyasn1_modules==0.4.2
+pycparser==3.0
+urllib3==2.8.0

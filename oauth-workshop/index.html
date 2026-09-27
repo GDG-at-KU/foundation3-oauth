@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="An application tracker example with Firebase Google sign-in and a Python identity API." />
+    <title>Next Step — Application tracker</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header page-width">
+      <a class="brand" href="./" aria-label="Home"><span class="brand-mark" aria-hidden="true">↗</span><span id="app-name">Next Step</span></a>
+      <span class="chapter">APPLICATION TRACKER <span>GOOGLE SIGN-IN</span></span>
+    </header>
+    <main id="main" class="page-width">
+      <section class="intro" aria-labelledby="page-title">
+        <div class="intro-content">
+          <p class="eyebrow">SMALL STEPS. BIG POSSIBILITIES.</p>
+          <h1 id="page-title">Your next chapter starts here.</h1>
+          <p id="description" class="intro-copy"></p>
+        </div>
+        <svg class="community-art" viewBox="0 0 380 300" fill="none" aria-hidden="true" focusable="false">
+          <g stroke="currentColor" stroke-width="2">
+            <circle cx="36" cy="38" r="23"/><circle cx="98" cy="38" r="23"/><circle cx="160" cy="38" r="23"/>
+            <path d="M13 108a23 23 0 0 1 46 0 23 23 0 0 1 46 0 23 23 0 0 1 46 0 23 23 0 0 1 46 0"/>
+            <circle cx="270" cy="185" r="85"/><ellipse cx="270" cy="185" rx="38" ry="85"/>
+            <path d="M185 185h170M198 141h144M198 229h144"/>
+            <path class="art-pastel" d="M22 184h121m-29-23c0 16 13 23 29 23-16 0-29 7-29 23M245 14h33l-25 61h-33zM296 14h33l-25 61h-33z"/>
+            <path class="art-pastel" d="M17 253h30v30H17zM63 253h30v30H63z"/><circle cx="125" cy="268" r="15"/>
+          </g>
+        </svg>
+      </section>
+      <section class="account-section" aria-label="Account and identity verification">
+        <div id="setup" class="notice" hidden><strong>Connect your Firebase project.</strong><p>Copy <code>.env.example</code> to <code>.env.local</code>, fill in your web app config, and restart any running servers. See the README for the four values.</p></div>
+        <div class="account-grid">
+          <section class="account-card" aria-labelledby="identity-title">
+            <div class="card-top"><span class="eyebrow">YOUR ACCOUNT</span><span id="status" class="badge">Checking…</span></div>
+            <h2 id="identity-title">A familiar way to sign in.</h2>
+            <p id="guest">Continue with Google to connect your identity. The application examples below stay public and fictional.</p>
+            <div id="account" hidden><p id="name" class="person"></p><p id="email" class="muted"></p><dl class="identity-details"><dt>Firebase user ID</dt><dd id="uid"></dd></dl></div>
+            <div class="actions"><button id="sign-in" class="primary" disabled>Continue with Google ↗</button><button id="sign-out" hidden>Sign out</button></div>
+            <p id="auth-message" class="message" role="status" aria-live="polite"></p>
+          </section>
+          <section class="account-card proof" aria-labelledby="proof-title">
+            <div class="card-top"><span class="eyebrow">VERIFY YOUR IDENTITY</span><span class="badge outline">/api/me</span></div>
+            <h2 id="proof-title">Let the server check.</h2>
+            <p>The browser sends a Firebase ID token. Python verifies it before returning your user ID.</p>
+            <div class="actions"><button id="verify" disabled>Ask server who I am →</button><button id="no-token">Try without a token</button></div>
+            <div id="server-result" class="result" role="status" aria-live="polite">No request yet. Predict what the server will say.</div>
+          </section>
+        </div>
+      </section>
+      <p class="data-caption">Local demo data — fictional records. These examples are not linked to your Google account.</p>
+      <dl id="summary" class="summary" aria-label="Example application summary"></dl>
+      <section aria-labelledby="collection-title" class="collection">
+        <div class="collection-heading"><h2 id="collection-title">Application examples</h2><p id="results-count" role="status" aria-live="polite"></p></div>
+        <div class="toolbar">
+          <div class="search-field"><label for="search">Search opportunities</label><input id="search" type="search" placeholder="Search company or role…" autocomplete="off" /></div>
+          <div class="status-field"><label for="filter-status">Status</label><select id="filter-status"><option value="all">All statuses</option></select></div>
+          <button id="clear" type="button">Clear filters</button>
+        </div>
+        <p id="error" class="error" role="alert" hidden></p>
+        <ul id="applications" class="application-list" aria-label="Applications"></ul>
+        <div id="empty" class="empty" hidden><h3 id="empty-title">No matches yet</h3><p id="empty-description">Try another search or clear the filters.</p></div>
+      </section>
+    </main>
+    <footer class="page-width site-footer"><p>Local demo data — fictional records.</p><span class="release-label">NEXT STEP <span aria-hidden="true">/</span> <span id="release">Google sign-in</span></span></footer>
+    <noscript><p>This example needs JavaScript enabled to display records and account state.</p></noscript>
+    <script type="module" src="/src/tracker.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
